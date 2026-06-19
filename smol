@@ -45,6 +45,9 @@ def handle_create(name: str, ports: list[str]) -> None:
     run_cmd(["smolvm", "machine", "start", "--name", name])
     run_cmd(["smolvm", "machine", "exec", "-it", "--name", name, "--", "sh", "-c", f"apk update && apk add -q {PACKAGES}"])
 
+    # always use IPv4
+    run_cmd(["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", "echo '-4' >> ~/.curlrc"])
+
     run_cmd(["smolvm", "machine", "exec", "-it", "--name", name, "--", "sh", "-c", "curl https://mise.jdx.dev/mise-latest-linux-arm64-musl > /usr/local/bin/mise"])
     run_cmd(["smolvm", "machine", "exec", "--name", name, "--", "chmod", "+x", "/usr/local/bin/mise"])
     PROFILE_SCRIPT = 'echo "export PATH=\\"$HOME/.local/share/mise/shims:\\$PATH\\"" > /root/.profile'
