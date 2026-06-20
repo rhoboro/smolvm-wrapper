@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# uvx ruff format ~/.sd/smol --line-length 160
-# uvx mypy ~/.sd/smol
+# uvx ruff format smol --line-length 160
+# uvx mypy smol
 import argparse
 import subprocess
 from typing import Any
@@ -48,7 +48,9 @@ def handle_create(name: str, ports: list[str]) -> None:
     # always use IPv4
     run_cmd(["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", "echo '-4' >> ~/.curlrc"])
 
-    run_cmd(["smolvm", "machine", "exec", "-it", "--name", name, "--", "sh", "-c", "curl https://mise.jdx.dev/mise-latest-linux-arm64-musl > /usr/local/bin/mise"])
+    run_cmd(
+        ["smolvm", "machine", "exec", "-it", "--name", name, "--", "sh", "-c", "curl https://mise.jdx.dev/mise-latest-linux-arm64-musl > /usr/local/bin/mise"]
+    )
     run_cmd(["smolvm", "machine", "exec", "--name", name, "--", "chmod", "+x", "/usr/local/bin/mise"])
     PROFILE_SCRIPT = 'echo "export PATH=\\"$HOME/.local/share/mise/shims:\\$PATH\\"" > /root/.profile'
     run_cmd(["smolvm", "machine", "exec", "-it", "--name", name, "--", "sh", "-c", PROFILE_SCRIPT])
@@ -88,8 +90,13 @@ def handle_remove(name: str, force: bool) -> None:
         run_cmd(["smolvm", "machine", "rm", "--name", name])
 
 
+def handle_mount(name: str, volume: str) -> None:
+    run_cmd(["smolvm", "machine", "update", "--name", name, "--volume", volume])
+
+
 def handle_shell(name: str) -> None:
-    run_cmd(["smolvm", "machine", "shell", "--name", name], check=False)
+    # Launch /bin/sh as login shell for reading /root/.profile
+    run_cmd(["smolvm", "machine", "exec", "--name", name, "-it", "-w", "/root/app", "--", "/bin/sh", "-l"], check=False)
 
 
 def handle_setup(name: str, toolchain: str) -> None:
@@ -105,7 +112,7 @@ def validate_port_format(value: str) -> str:
 
 def main() -> None:
     base_parser = argparse.ArgumentParser(add_help=False)
-    base_parser.add_argument("action", type=str, choices=["create", "stop", "restart", "clone", "remove", "rm", "setup", "shell"])
+    base_parser.add_argument("action", type=str, choices=["create", "stop", "restart", "clone", "remove", "rm", "setup", "shell", "mount"])
     base_parser.add_argument("name", type=str)
 
     args, remaining_args = base_parser.parse_known_args()
@@ -138,6 +145,12 @@ def main() -> None:
             clone_parser.add_argument("-d", "--dest", type=str, default="/root/app")
             clone_args, _ = clone_parser.parse_known_args(remaining_args)
             handle_clone(name=args.name, repo=clone_args.repo, dest=clone_args.dest)
+
+        case "mount":
+            mount_parser = argparse.ArgumentParser(description="Mount volume")
+            mount_parser.add_argument("-v", "--volume", type=str, required=True)
+            mount_args, _ = mount_parser.parse_known_args(remaining_args)
+            handle_mount(name=args.name, volume=mount_args.volume)
 
         case "remove" | "rm":
             remove_parser = argparse.ArgumentParser(description="Remove machine")
