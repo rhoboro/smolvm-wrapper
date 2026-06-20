@@ -1,24 +1,13 @@
 # smolvm-wrapper
 
-```bash
-ln -sf ~/go/src/github.com/rhoboro/smolvm-wrapper/smol ~/.sd/smol
-```
+A tiny personal wrapper script for [smolvm](https://github.com/smol-machines/smolvm)
+
+## Setup
 
 ```bash
-smol create myvm -p 8080:8080 -p 2222:22
-smol mount myvm --volume /path/to/app:/root/app
-smol clone myvm --repo git@github.com:org/repo.git
-smolvm machine exec -it --name myvm -w /root/app -- docker compose up
-smol shell myvm
-/ # mise use uv ty
-/ # uv --help
-^D
+ln -sf ${PWD}/smol ${HOME}/.local/bin/smol
 
-zed ssh://myvm.smolvm:2222/root/app
-```
-
-```bash
-# ~/.ssh/config
+# Add to ~/.ssh/config
 Host *.smolvm
     User root
     HostName 127.0.0.1
@@ -26,5 +15,40 @@ Host *.smolvm
     IdentitiesOnly yes
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
+```
+
+## How to use
+
+```bash
+$ smol
+usage: smol {clone,create,mount,remove,restart,rm,setup,shell,stop} name
+smol: error: the following arguments are required: action, name
+```
+
+```bash
+smol create myvm -p 8080:8080 -p 2222:22
+
+# git clone
+smol clone myvm --repo git@github.com:org/repo.git --dist /root/app
+
+# Or mount a local dir
+smol stop myvm
+smol mount myvm --volume /path/to/app:/root/app
+smol restart myvm
+
+# Docker and Docker Compose are available.
+smolvm machine exec -it --name myvm -w /root/app -- docker compose up
+
+# Mise is pre-installed.
+smol shell myvm
+/ # mise use uv ty
+/ # uv --help
+^D
+
+# Edit files via SSH
+zed ssh://myvm.smolvm:2222/root/app
+
+# Cleanup
+smol rm myvm -f
 ```
 

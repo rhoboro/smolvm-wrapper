@@ -4,11 +4,14 @@
 # uvx mypy smol
 import argparse
 import subprocess
-from typing import Any
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
-PUB_KEY_PATH = Path.home() / ".ssh" / "id_smolvm.pub"
 PACKAGES = "openssh docker docker-compose git curl bash vim"
+MISE_URL = "https://mise.jdx.dev/mise-latest-linux-arm64-musl"
+PROFILE_SCRIPT = 'echo "export PATH=\\"$HOME/.local/share/mise/shims:\\$PATH\\"" > /root/.profile'
+PUB_KEY_PATH = Path.home() / ".ssh" / "id_smolvm.pub"
 DOCKER_INIT_SCRIPT = """
 mkdir -p /storage/docker /var/lib/docker
 mount --bind /storage/docker /var/lib/docker
@@ -17,9 +20,7 @@ dockerd --storage-driver=overlay2 >/tmp/dockerd.log 2>&1 &
 for i in $(seq 1 30); do docker info >/dev/null 2>&1 && break; sleep 1; done
 docker info | grep "Storage Driver"
 """
-
-SETUP_SCRIPTS: dict[str, str] = {
-    "rust": """
+RUST_SETUP_SCRIPT = """
 apk add -q gcc musl-dev libgcc
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
 /root/.cargo/bin/rustup toolchain install stable --component rust-analyzer
@@ -28,8 +29,15 @@ ln -sf $(/root/.cargo/bin/rustup which rust-analyzer) /usr/local/bin/rust-analyz
 rustc --version
 cargo --version
 rust-analyzer --version
-""",
+"""
+SETUP_SCRIPTS: dict[str, str] = {
+    "rust": RUST_SETUP_SCRIPT,
 }
+
+
+def run_cmds(cmds: list[list[Any]]) -> Iterator[subprocess.CompletedProcess[str]]:
+    for cmd in cmds:
+        yield run_cmd(cmd)
 
 
 def run_cmd(args: list[Any], check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -38,32 +46,32 @@ def run_cmd(args: list[Any], check: bool = True) -> subprocess.CompletedProcess[
 
 
 def handle_create(name: str, ports: list[str]) -> None:
-    cmd = ["smolvm", "machine", "create", "--name", name, "--ssh-agent", "--net", "--overlay", "30"]
+    create = ["smolvm", "machine", "create", "--name", name, "--ssh-agent", "--net", "--overlay", "30"]
     for port in ports:
-        cmd.extend(["--port", port])
-    run_cmd(cmd)
-    run_cmd(["smolvm", "machine", "start", "--name", name])
-    run_cmd(["smolvm", "machine", "exec", "-it", "--name", name, "--", "sh", "-c", f"apk update && apk add -q {PACKAGES}"])
-
-    # always use IPv4
-    run_cmd(["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", "echo '-4' >> ~/.curlrc"])
-
-    run_cmd(
-        ["smolvm", "machine", "exec", "-it", "--name", name, "--", "sh", "-c", "curl https://mise.jdx.dev/mise-latest-linux-arm64-musl > /usr/local/bin/mise"]
-    )
-    run_cmd(["smolvm", "machine", "exec", "--name", name, "--", "chmod", "+x", "/usr/local/bin/mise"])
-    PROFILE_SCRIPT = 'echo "export PATH=\\"$HOME/.local/share/mise/shims:\\$PATH\\"" > /root/.profile'
-    run_cmd(["smolvm", "machine", "exec", "-it", "--name", name, "--", "sh", "-c", PROFILE_SCRIPT])
-
-    run_cmd(["smolvm", "machine", "cp", PUB_KEY_PATH, f"{name}:/root/.ssh/authorized_keys"])
-    run_cmd(["smolvm", "machine", "exec", "--name", name, "--", "chown", "root:root", "/var/empty"])
-    run_cmd(["smolvm", "machine", "exec", "--name", name, "--", "ssh-keygen", "-A"])
-    run_cmd(["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", "echo 'SetEnv ENV=/root/.profile' >> /etc/ssh/sshd_config"])
-    run_cmd(["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", "echo 'StrictModes no' >> /etc/ssh/sshd_config"])
-    run_cmd(["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", "ssh-keyscan -t rsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null"])
-    run_cmd(["smolvm", "machine", "exec", "--name", name, "--", "/usr/sbin/sshd"])
-    run_cmd(["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", DOCKER_INIT_SCRIPT])
-
+        create.extend(["--port", port])
+    _ = [
+        res
+        for res in run_cmds(
+            [
+                create,
+                ["smolvm", "machine", "start", "--name", name],
+                ["smolvm", "machine", "exec", "-it", "--name", name, "--", "sh", "-c", f"apk update && apk add -q {PACKAGES}"],
+                # always use IPv4
+                ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", "echo '-4' >> ~/.curlrc"],
+                ["smolvm", "machine", "exec", "-it", "--name", name, "--", "sh", "-c", f"curl {MISE_URL} > /usr/local/bin/mise"],
+                ["smolvm", "machine", "exec", "--name", name, "--", "chmod", "+x", "/usr/local/bin/mise"],
+                ["smolvm", "machine", "exec", "-it", "--name", name, "--", "sh", "-c", PROFILE_SCRIPT],
+                ["smolvm", "machine", "cp", PUB_KEY_PATH, f"{name}:/root/.ssh/authorized_keys"],
+                ["smolvm", "machine", "exec", "--name", name, "--", "chown", "root:root", "/var/empty"],
+                ["smolvm", "machine", "exec", "--name", name, "--", "ssh-keygen", "-A"],
+                ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", "echo 'SetEnv ENV=/root/.profile' >> /etc/ssh/sshd_config"],
+                ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", "echo 'StrictModes no' >> /etc/ssh/sshd_config"],
+                ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", "ssh-keyscan -t rsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null"],
+                ["smolvm", "machine", "exec", "--name", name, "--", "/usr/sbin/sshd"],
+                ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", DOCKER_INIT_SCRIPT],
+            ]
+        )
+    ]
     print(f"\nUsage:\nsmol clone {name} --repo git@github.com:org/repo.git\nsmolvm machine exec -it --name {name} -w /root/app -- docker compose up")
 
 
@@ -72,9 +80,16 @@ def handle_stop(name: str) -> None:
 
 
 def handle_restart(name: str) -> None:
-    run_cmd(["smolvm", "machine", "start", "--name", name])
-    run_cmd(["smolvm", "machine", "exec", "--name", name, "--", "/usr/sbin/sshd"])
-    run_cmd(["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", DOCKER_INIT_SCRIPT])
+    _ = [
+        res
+        for res in run_cmds(
+            [
+                ["smolvm", "machine", "start", "--name", name],
+                ["smolvm", "machine", "exec", "--name", name, "--", "/usr/sbin/sshd"],
+                ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", DOCKER_INIT_SCRIPT],
+            ]
+        )
+    ]
 
     print(f"\nUsage:\nsmolvm machine exec -it --name {name} -w /root/app -- docker compose up")
 
@@ -112,12 +127,19 @@ def validate_port_format(value: str) -> str:
 
 def main() -> None:
     base_parser = argparse.ArgumentParser(add_help=False)
-    base_parser.add_argument("action", type=str, choices=["create", "stop", "restart", "clone", "remove", "rm", "setup", "shell", "mount"])
+    base_parser.add_argument("action", type=str, choices=["clone", "create", "mount", "remove", "restart", "rm", "setup", "shell", "stop"])
     base_parser.add_argument("name", type=str)
 
     args, remaining_args = base_parser.parse_known_args()
 
     match args.action:
+        case "clone":
+            clone_parser = argparse.ArgumentParser(description="Clone repo into machine")
+            clone_parser.add_argument("-r", "--repo", type=str, required=True)
+            clone_parser.add_argument("-d", "--dest", type=str, default="/root/app")
+            clone_args, _ = clone_parser.parse_known_args(remaining_args)
+            handle_clone(name=args.name, repo=clone_args.repo, dest=clone_args.dest)
+
         case "create":
             create_parser = argparse.ArgumentParser(description="Create machine", conflict_handler="resolve")
             create_parser.add_argument("-p", "--port", type=int, required=True)
@@ -133,19 +155,6 @@ def main() -> None:
             create_args, _ = create_parser.parse_known_args(remaining_args)
             handle_create(name=args.name, ports=create_args.port)
 
-        case "stop":
-            handle_stop(name=args.name)
-
-        case "restart":
-            handle_restart(name=args.name)
-
-        case "clone":
-            clone_parser = argparse.ArgumentParser(description="Clone repo into machine")
-            clone_parser.add_argument("-r", "--repo", type=str, required=True)
-            clone_parser.add_argument("-d", "--dest", type=str, default="/root/app")
-            clone_args, _ = clone_parser.parse_known_args(remaining_args)
-            handle_clone(name=args.name, repo=clone_args.repo, dest=clone_args.dest)
-
         case "mount":
             mount_parser = argparse.ArgumentParser(description="Mount volume")
             mount_parser.add_argument("-v", "--volume", type=str, required=True)
@@ -158,6 +167,9 @@ def main() -> None:
             remove_args, _ = remove_parser.parse_known_args(remaining_args)
             handle_remove(name=args.name, force=remove_args.force)
 
+        case "restart":
+            handle_restart(name=args.name)
+
         case "setup":
             setup_parser = argparse.ArgumentParser(description="Install toolchain into machine")
             setup_parser.add_argument("toolchain", type=str, choices=["rust"])
@@ -166,6 +178,9 @@ def main() -> None:
 
         case "shell":
             handle_shell(name=args.name)
+
+        case "stop":
+            handle_stop(name=args.name)
 
 
 if __name__ == "__main__":
