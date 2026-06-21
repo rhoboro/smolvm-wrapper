@@ -170,13 +170,13 @@ def main() -> None:
         case "clone":
             parser = argparse.ArgumentParser()
             parser.add_argument("name", type=str)
-            parser.add_argument("-r", "--repo", type=str, required=True)
+            parser.add_argument("repo", type=str)
             parser.add_argument("-d", "--dest", type=str, default="/root/app")
             args, _ = parser.parse_known_args(remaining_args)
             handle_clone(name=args.name, repo=args.repo, dest=args.dest)
 
         case "create":
-            parser = argparse.ArgumentParser()
+            parser = argparse.ArgumentParser(conflict_handler="resolve")
             parser.add_argument("name", type=str)
             parser.add_argument("-p", "--port", type=int, required=True)
             parser.add_argument(
@@ -188,8 +188,17 @@ def main() -> None:
                 required=False,
                 help="Port mapping in host:dest format (can be specified multiple times)",
             )
+            parser.add_argument("--clone", type=str, required=False)
+            parser.add_argument("--mount", type=str, required=False)
             args, _ = parser.parse_known_args(remaining_args)
             handle_create(name=args.name, ports=args.port)
+            if args.clone:
+                handle_clone(name=args.name, repo=args.clone, dest="/root/app")
+            elif args.mount:
+                m = f"{Path(args.mount).absolute()}:/root/app"
+                handle_stop(name=args.name)
+                handle_mount(name=args.name, volume=m)
+                handle_restart(name=args.name)
 
         case "edit":
             parser = argparse.ArgumentParser()
@@ -201,7 +210,7 @@ def main() -> None:
         case "mount":
             parser = argparse.ArgumentParser()
             parser.add_argument("name", type=str)
-            parser.add_argument("-v", "--volume", type=str, required=True)
+            parser.add_argument("volume", type=str, required=True)
             args, _ = parser.parse_known_args(remaining_args)
             handle_mount(name=args.name, volume=args.volume)
 
