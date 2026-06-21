@@ -54,6 +54,7 @@ rust-analyzer --version
 SETUP_SCRIPTS: dict[str, str] = {
     "rust": RUST_SETUP_SCRIPT,
 }
+EDITOR = "zed"
 
 
 def run_cmds(cmds: list[list[Any]]) -> Iterator[subprocess.CompletedProcess[str]]:
@@ -61,13 +62,17 @@ def run_cmds(cmds: list[list[Any]]) -> Iterator[subprocess.CompletedProcess[str]
         yield run_cmd(cmd)
 
 
-def run_cmd(args: list[Any], check: bool = True) -> subprocess.CompletedProcess[str]:
+def run_cmd(args: list[Any], check: bool = True, capture_output: bool = False) -> subprocess.CompletedProcess[str]:
     str_args: list[str] = [str(arg) for arg in args]
-    return subprocess.run(str_args, check=check, text=True)
+    return subprocess.run(str_args, check=check, text=True, capture_output=capture_output)
+
+
+def handle_clone(name: str, repo: str, dest: str) -> None:
+    run_cmd(["smolvm", "machine", "exec", "-it", "--name", name, "--", "git", "clone", repo, dest])
 
 
 def handle_create(name: str, ports: list[str]) -> None:
-    create = ["smolvm", "machine", "create", "--name", name, "--ssh-agent", "--net", "--overlay", "30"]
+    create = ["smolvm", "machine", "create", "--name", name, "--ssh-agent", "--net"]
     pkgs = " ".join(PACKAGES)
     for port in ports:
         create.extend(["--port", port])
@@ -92,8 +97,32 @@ def handle_create(name: str, ports: list[str]) -> None:
     print(f"\nUsage:\nsmol clone {name} --repo git@github.com:org/repo.git\nsmol mount --volume /path/to/app:/root/app")
 
 
-def handle_stop(name: str) -> None:
-    run_cmd(["smolvm", "machine", "stop", "--name", name])
+def handle_edit(name: str, directory: str) -> None:
+    result = run_cmd(["smolvm", "machine", "ls", "-v"], capture_output=True)
+    is_target = False
+    for line in result.stdout.splitlines()[2:]:
+        if line.startswith(name + " ") and "running" in line:
+            is_target = True
+        elif is_target and line == "":
+            is_target = False
+        if is_target:
+            if line.endswith(" 22"):
+                port = line.rsplit(" ")[-3]
+                run_cmd([EDITOR, f"ssh://i.smolvm:{port}{directory}"])
+                break
+    else:
+        print("Not found running vm")
+
+
+def handle_mount(name: str, volume: str) -> None:
+    run_cmd(["smolvm", "machine", "update", "--name", name, "--volume", volume])
+
+
+def handle_remove(name: str, force: bool) -> None:
+    if force:
+        run_cmd(["smolvm", "machine", "rm", "--name", name, "--force"])
+    else:
+        run_cmd(["smolvm", "machine", "rm", "--name", name])
 
 
 def handle_restart(name: str) -> None:
@@ -111,19 +140,9 @@ def handle_restart(name: str) -> None:
     print(f"\nUsage:\nsmolvm machine exec -it --name {name} -w /root/app -- docker compose up")
 
 
-def handle_clone(name: str, repo: str, dest: str) -> None:
-    run_cmd(["smolvm", "machine", "exec", "-it", "--name", name, "--", "git", "clone", repo, dest])
-
-
-def handle_remove(name: str, force: bool) -> None:
-    if force:
-        run_cmd(["smolvm", "machine", "rm", "--name", name, "--force"])
-    else:
-        run_cmd(["smolvm", "machine", "rm", "--name", name])
-
-
-def handle_mount(name: str, volume: str) -> None:
-    run_cmd(["smolvm", "machine", "update", "--name", name, "--volume", volume])
+def handle_setup(name: str, toolchain: str) -> None:
+    script = SETUP_SCRIPTS[toolchain]
+    run_cmd(["smolvm", "machine", "exec", "-it", "--name", name, "--", "sh", "-c", script])
 
 
 def handle_shell(name: str) -> None:
@@ -131,9 +150,8 @@ def handle_shell(name: str) -> None:
     run_cmd(["smolvm", "machine", "exec", "--name", name, "-it", "-w", "/root", "--", "/bin/sh", "-l"], check=False)
 
 
-def handle_setup(name: str, toolchain: str) -> None:
-    script = SETUP_SCRIPTS[toolchain]
-    run_cmd(["smolvm", "machine", "exec", "-it", "--name", name, "--", "sh", "-c", script])
+def handle_stop(name: str) -> None:
+    run_cmd(["smolvm", "machine", "stop", "--name", name])
 
 
 def validate_port_format(value: str) -> str:
@@ -143,24 +161,25 @@ def validate_port_format(value: str) -> str:
 
 
 def main() -> None:
-    base_parser = argparse.ArgumentParser(add_help=False)
-    base_parser.add_argument("action", type=str, choices=["clone", "create", "mount", "remove", "restart", "rm", "setup", "shell", "stop"])
-    base_parser.add_argument("name", type=str)
+    cmd_parser = argparse.ArgumentParser(add_help=False)
+    cmd_parser.add_argument("action", type=str, choices=["clone", "create", "edit", "mount", "remove", "restart", "rm", "setup", "shell", "start", "stop"])
 
-    args, remaining_args = base_parser.parse_known_args()
+    cmd, remaining_args = cmd_parser.parse_known_args()
 
-    match args.action:
+    match cmd.action:
         case "clone":
-            clone_parser = argparse.ArgumentParser(description="Clone repo into machine")
-            clone_parser.add_argument("-r", "--repo", type=str, required=True)
-            clone_parser.add_argument("-d", "--dest", type=str, default="/root/app")
-            clone_args, _ = clone_parser.parse_known_args(remaining_args)
-            handle_clone(name=args.name, repo=clone_args.repo, dest=clone_args.dest)
+            parser = argparse.ArgumentParser()
+            parser.add_argument("name", type=str)
+            parser.add_argument("-r", "--repo", type=str, required=True)
+            parser.add_argument("-d", "--dest", type=str, default="/root/app")
+            args, _ = parser.parse_known_args(remaining_args)
+            handle_clone(name=args.name, repo=args.repo, dest=args.dest)
 
         case "create":
-            create_parser = argparse.ArgumentParser(description="Create machine", conflict_handler="resolve")
-            create_parser.add_argument("-p", "--port", type=int, required=True)
-            create_parser.add_argument(
+            parser = argparse.ArgumentParser()
+            parser.add_argument("name", type=str)
+            parser.add_argument("-p", "--port", type=int, required=True)
+            parser.add_argument(
                 "-p",
                 "--port",
                 type=validate_port_format,
@@ -169,34 +188,53 @@ def main() -> None:
                 required=False,
                 help="Port mapping in host:dest format (can be specified multiple times)",
             )
-            create_args, _ = create_parser.parse_known_args(remaining_args)
-            handle_create(name=args.name, ports=create_args.port)
+            args, _ = parser.parse_known_args(remaining_args)
+            handle_create(name=args.name, ports=args.port)
+
+        case "edit":
+            parser = argparse.ArgumentParser()
+            parser.add_argument("name", type=str)
+            parser.add_argument("-d", "--dir", type=str, default="/root/app")
+            args, _ = parser.parse_known_args(remaining_args)
+            handle_edit(name=args.name, directory=args.dir)
 
         case "mount":
-            mount_parser = argparse.ArgumentParser(description="Mount volume")
-            mount_parser.add_argument("-v", "--volume", type=str, required=True)
-            mount_args, _ = mount_parser.parse_known_args(remaining_args)
-            handle_mount(name=args.name, volume=mount_args.volume)
+            parser = argparse.ArgumentParser()
+            parser.add_argument("name", type=str)
+            parser.add_argument("-v", "--volume", type=str, required=True)
+            args, _ = parser.parse_known_args(remaining_args)
+            handle_mount(name=args.name, volume=args.volume)
 
         case "remove" | "rm":
-            remove_parser = argparse.ArgumentParser(description="Remove machine")
-            remove_parser.add_argument("-f", "--force", action="store_true")
-            remove_args, _ = remove_parser.parse_known_args(remaining_args)
-            handle_remove(name=args.name, force=remove_args.force)
+            parser = argparse.ArgumentParser()
+            parser.add_argument("name", type=str)
+            parser.add_argument("-f", "--force", action="store_true")
+            args, _ = parser.parse_known_args(remaining_args)
+            handle_remove(name=args.name, force=args.force)
 
-        case "restart":
+        case "restart" | "start":
+            parser = argparse.ArgumentParser()
+            parser.add_argument("name", type=str)
+            args, _ = parser.parse_known_args(remaining_args)
             handle_restart(name=args.name)
 
         case "setup":
-            setup_parser = argparse.ArgumentParser(description="Install toolchain into machine")
-            setup_parser.add_argument("toolchain", type=str, choices=["rust"])
-            setup_args, _ = setup_parser.parse_known_args(remaining_args)
-            handle_setup(name=args.name, toolchain=setup_args.toolchain)
+            parser = argparse.ArgumentParser()
+            parser.add_argument("name", type=str)
+            parser.add_argument("toolchain", type=str, choices=["rust"])
+            args, _ = parser.parse_known_args(remaining_args)
+            handle_setup(name=args.name, toolchain=args.toolchain)
 
         case "shell":
+            parser = argparse.ArgumentParser()
+            parser.add_argument("name", type=str)
+            args, _ = parser.parse_known_args(remaining_args)
             handle_shell(name=args.name)
 
         case "stop":
+            parser = argparse.ArgumentParser()
+            parser.add_argument("name", type=str)
+            args, _ = parser.parse_known_args(remaining_args)
             handle_stop(name=args.name)
 
 
