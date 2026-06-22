@@ -114,6 +114,10 @@ def handle_edit(name: str, directory: str) -> None:
         print("Not found running vm")
 
 
+def handle_list() -> None:
+    run_cmd(["smolvm", "machine", "ls", "-v"])
+
+
 def handle_mount(name: str, volume: str) -> None:
     run_cmd(["smolvm", "machine", "update", "--name", name, "--volume", volume])
 
@@ -162,7 +166,7 @@ def validate_port_format(value: str) -> str:
 
 def main() -> None:
     cmd_parser = argparse.ArgumentParser(add_help=False)
-    cmd_parser.add_argument("action", type=str, choices=["clone", "create", "edit", "mount", "remove", "restart", "rm", "setup", "shell", "start", "stop"])
+    cmd_parser.add_argument("action", type=str, choices=["clone", "create", "edit", "list", "ls", "mount", "remove", "restart", "rm", "setup", "shell", "start", "stop"])
 
     cmd, remaining_args = cmd_parser.parse_known_args()
 
@@ -206,6 +210,9 @@ def main() -> None:
             parser.add_argument("-d", "--dir", type=str, default="/root/app")
             args, _ = parser.parse_known_args(remaining_args)
             handle_edit(name=args.name, directory=args.dir)
+
+        case "list" | "ls":
+            handle_list()
 
         case "mount":
             parser = argparse.ArgumentParser()
