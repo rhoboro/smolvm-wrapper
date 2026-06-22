@@ -68,6 +68,9 @@ def run_cmd(args: list[Any], check: bool = True, capture_output: bool = False) -
 
 
 def handle_clone(name: str, repo: str, dest: str) -> None:
+    if not repo.startswith(("https://", "git@")):
+        repo = f"git@github.com:{repo}.git"
+
     run_cmd(["smolvm", "machine", "exec", "-it", "--name", name, "--", "git", "clone", repo, dest])
 
 
