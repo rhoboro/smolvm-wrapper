@@ -15,6 +15,9 @@ Host *.smolvm
     IdentitiesOnly yes
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
+
+export SMOL_GIT_USER_NAME=<your name>
+export SMOL_GIT_USER_EMAIL=<your email address>
 ```
 
 ## How to use

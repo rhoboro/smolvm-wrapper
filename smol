@@ -3,6 +3,7 @@
 # uvx ruff format smol --line-length 160
 # uvx mypy smol
 import argparse
+import os
 import subprocess
 from collections.abc import Iterator
 from pathlib import Path
@@ -18,9 +19,16 @@ PACKAGES = [
     "vim",
 ]
 PUB_KEY_PATH = Path.home() / ".ssh" / "id_smolvm.pub"
-GITHUB_INIT_SCRIPT = """
+if os.getenv("SMOL_GIT_USER_NAME") and os.getenv("SMOL_GIT_USER_EMAIL"):
+    GITHUB_INIT_SCRIPT = f"""
+git config --global user.name  {os.getenv("SMOL_GIT_USER_NAME")}
+git config --global user.email {os.getenv("SMOL_GIT_USER_EMAIL")}
 ssh-keyscan -t rsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
-"""
+    """
+else:
+    GITHUB_INIT_SCRIPT = """
+ssh-keyscan -t rsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+    """
 MISE_INIT_SCRIPT = """
 curl https://mise.jdx.dev/mise-latest-linux-arm64-musl > /usr/local/bin/mise
 chmod +x /usr/local/bin/mise
