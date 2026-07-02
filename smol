@@ -177,7 +177,7 @@ def validate_port_format(value: str) -> str:
 
 def main() -> None:
     cmd_parser = argparse.ArgumentParser(add_help=False)
-    cmd_parser.add_argument("action", type=str, choices=["clone", "create", "edit", "list", "ls", "mount", "remove", "restart", "rm", "setup", "shell", "start", "stop", "zed"])
+    cmd_parser.add_argument("action", type=str, choices=["clone", "create", "edit", "editor", "list", "ls", "mount", "remove", "restart", "rm", "setup", "shell", "start", "stop", "zed"])
 
     cmd, remaining_args = cmd_parser.parse_known_args()
 
@@ -215,7 +215,7 @@ def main() -> None:
                 handle_mount(name=args.name, volume=m)
                 handle_restart(name=args.name)
 
-        case "edit" | "zed":
+        case "edit" | "editor" | "zed":
             parser = argparse.ArgumentParser()
             parser.add_argument("name", type=str)
             parser.add_argument("-d", "--dir", type=str, default="/root/app")
