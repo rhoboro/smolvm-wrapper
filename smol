@@ -124,6 +124,10 @@ def handle_edit(name: str, directory: str) -> None:
     else:
         print("Not found running vm")
 
+def handle_exec(name: str, work_dir: str, args: list[str]) -> None:
+    result = run_cmd(["smolvm", "machine", "exec", "--name", name, "-w", work_dir,*args], check=False)
+    raise SystemExit(result.returncode)
+
 
 def handle_list() -> None:
     run_cmd(["smolvm", "machine", "ls", "-v"])
@@ -162,7 +166,8 @@ def handle_setup(name: str, toolchain: str) -> None:
 
 def handle_shell(name: str) -> None:
     # Launch /bin/sh as login shell for reading /root/.profile
-    run_cmd(["smolvm", "machine", "exec", "--name", name, "-it", "-w", "/root", "--", "/bin/sh", "-l"], check=False)
+    result = run_cmd(["smolvm", "machine", "exec", "--name", name, "-it", "-w", "/root", "--", "/bin/sh", "-l"], check=False)
+    raise SystemExit(result.returncode)
 
 
 def handle_stop(name: str) -> None:
@@ -177,7 +182,7 @@ def validate_port_format(value: str) -> str:
 
 def main() -> None:
     cmd_parser = argparse.ArgumentParser(add_help=False)
-    cmd_parser.add_argument("action", type=str, choices=["clone", "create", "edit", "editor", "list", "ls", "mount", "remove", "restart", "rm", "setup", "shell", "start", "stop", "zed"])
+    cmd_parser.add_argument("action", type=str, choices=["clone", "create", "edit", "editor", "exec", "list", "ls", "mount", "remove", "restart", "rm", "setup", "shell", "start", "stop", "zed"])
 
     cmd, remaining_args = cmd_parser.parse_known_args()
 
@@ -221,6 +226,16 @@ def main() -> None:
             parser.add_argument("-d", "--dir", type=str, default="/root/app")
             args, _ = parser.parse_known_args(remaining_args)
             handle_edit(name=args.name, directory=args.dir)
+
+        case "exec":
+            parser = argparse.ArgumentParser()
+            parser.add_argument("name", type=str)
+            parser.add_argument("-w", "--work-dir", type=str, default="/root/app")
+            args, remaining = parser.parse_known_args(remaining_args)
+            exec_args = remaining
+            if exec_args[:1] == ["--"]:
+                exec_args = exec_args[1:]
+            handle_exec(name=args.name, work_dir=args.work_dir, args=exec_args)
 
         case "list" | "ls":
             handle_list()
