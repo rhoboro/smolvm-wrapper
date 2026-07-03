@@ -182,7 +182,7 @@ def validate_port_format(value: str) -> str:
 
 def main() -> None:
     cmd_parser = argparse.ArgumentParser(add_help=False)
-    cmd_parser.add_argument("action", type=str, choices=["clone", "create", "edit", "editor", "exec", "list", "ls", "mount", "remove", "restart", "rm", "setup", "shell", "start", "stop", "zed"])
+    cmd_parser.add_argument("action", type=str, choices=["clone", "create", "edit", "editor", "exec", "git", "list", "ls", "mount", "remove", "restart", "rm", "setup", "shell", "start", "stop", "zed"])
 
     cmd, remaining_args = cmd_parser.parse_known_args()
 
@@ -235,6 +235,14 @@ def main() -> None:
             exec_args = remaining
             if exec_args[:1] == ["--"]:
                 exec_args = exec_args[1:]
+            handle_exec(name=args.name, work_dir=args.work_dir, args=exec_args)
+
+        case "git":
+            parser = argparse.ArgumentParser()
+            parser.add_argument("name", type=str)
+            parser.add_argument("-w", "--work-dir", type=str, default="/root/app")
+            args, remaining = parser.parse_known_args(remaining_args)
+            exec_args = ["git"] + remaining
             handle_exec(name=args.name, work_dir=args.work_dir, args=exec_args)
 
         case "list" | "ls":
