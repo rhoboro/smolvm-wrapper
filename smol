@@ -24,15 +24,18 @@ if os.getenv("SMOL_GIT_USER_NAME") and os.getenv("SMOL_GIT_USER_EMAIL"):
 git config --global user.name  {os.getenv("SMOL_GIT_USER_NAME")}
 git config --global user.email {os.getenv("SMOL_GIT_USER_EMAIL")}
 ssh-keyscan -t rsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+mkdir -p ~/.config/git
     """
 else:
     GITHUB_INIT_SCRIPT = """
 ssh-keyscan -t rsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+mkdir -p ~/.config/git
     """
 MISE_INIT_SCRIPT = """
 curl https://mise.jdx.dev/mise-latest-linux-arm64-musl > /usr/local/bin/mise
 chmod +x /usr/local/bin/mise
 echo 'export PATH="$HOME/.local/share/mise/shims:$PATH"' > /root/.profile
+echo '.mise.local.toml' >> ~/.config/git/ignore
 """
 SSHD_INIT_SCRIPT = """
 chown root:root /var/empty
