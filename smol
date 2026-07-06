@@ -16,6 +16,7 @@ PACKAGES = [
     "docker",
     "git",
     "openssh",
+    "tzdata",
     "vim",
 ]
 PUB_KEY_PATH = Path.home() / ".ssh" / "id_smolvm.pub"
