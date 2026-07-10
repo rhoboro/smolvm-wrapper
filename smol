@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-PACKAGES = [
+APK_PACKAGES = [
     "bash",
     "curl",
     "docker-compose",
@@ -36,7 +36,32 @@ MISE_INIT_SCRIPT = """
 curl https://mise.jdx.dev/mise-latest-linux-arm64-musl > /usr/local/bin/mise
 chmod +x /usr/local/bin/mise
 echo 'export PATH="$HOME/.local/share/mise/shims:$PATH"' > /root/.profile
+mkdir -p ~/.config/git
 echo '.mise.local.toml' >> ~/.config/git/ignore
+mkdir -p ~/.config/mise
+cat << EOF > ~/.config/mise/config.toml
+[settings]
+
+[settings.status]
+show_tools = true
+
+[tools]
+bat = "latest"
+claude = "latest"
+fd = "latest"
+fzf = "latest"
+glow = "latest"
+hunk = "latest"
+jq = "latest"
+just = "latest"
+taplo = "latest"
+ty = "latest"
+usage = "latest"
+uv = "latest"
+zoxide = "latest"
+EOF
+mise i
+echo 'eval $(zoxide init bash)' >> ~/.bashrc
 """
 SSHD_INIT_SCRIPT = """
 chown root:root /var/empty
@@ -88,7 +113,7 @@ def handle_clone(name: str, repo: str, dest: str) -> None:
 
 def handle_create(name: str, ports: list[str]) -> None:
     create = ["smolvm", "machine", "create", "--name", name, "--ssh-agent", "--net"]
-    pkgs = " ".join(PACKAGES)
+    pkgs = " ".join(APK_PACKAGES)
     for port in ports:
         create.extend(["--port", port])
     _ = [
@@ -170,7 +195,7 @@ def handle_setup(name: str, toolchain: str) -> None:
 
 def handle_shell(name: str) -> None:
     # Launch /bin/sh as login shell for reading /root/.profile
-    result = run_cmd(["smolvm", "machine", "exec", "--name", name, "-it", "-w", "/root", "--", "/bin/sh", "-l"], check=False)
+    result = run_cmd(["smolvm", "machine", "exec", "--name", name, "-it", "-w", "/root", "--", "/bin/bash", "-l"], check=False)
     raise SystemExit(result.returncode)
 
 
