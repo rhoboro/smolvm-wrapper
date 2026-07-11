@@ -26,6 +26,18 @@ git config --global user.name  {os.getenv("SMOL_GIT_USER_NAME")}
 git config --global user.email {os.getenv("SMOL_GIT_USER_EMAIL")}
 ssh-keyscan -t rsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
 mkdir -p ~/.config/git
+curl https://raw.githubusercontent.com/git/git/refs/heads/master/contrib/completion/git-completion.bash -o ~/.git-completion.bash
+curl https://raw.githubusercontent.com/git/git/refs/heads/master/contrib/completion/git-prompt.sh -o ~/.git-prompt.sh
+echo '. ~/.git-completion.bash' >> ~/.bashrc
+echo '. ~/.git-prompt.sh' >> ~/.bashrc
+echo 'export GIT_PS1_SHOWDIRTYSTATE=1' >> ~/.bashrc
+echo 'export PS1='"'"'\\w$(__git_ps1 " (%s)")\\$ '"'" >> ~/.bashrc
+cat << EOF > ~/.bash_profile
+if [ -f ~/.bashrc ]; then
+  . ~/.bashrc
+fi
+EOF
+
     """
 else:
     GITHUB_INIT_SCRIPT = """
@@ -35,7 +47,7 @@ mkdir -p ~/.config/git
 MISE_INIT_SCRIPT = """
 curl https://mise.jdx.dev/mise-latest-linux-arm64-musl > /usr/local/bin/mise
 chmod +x /usr/local/bin/mise
-echo 'export PATH="$HOME/.local/share/mise/shims:$PATH"' > /root/.profile
+echo 'export PATH="$HOME/.local/share/mise/shims:$PATH"' >> /root/.bashrc
 mkdir -p ~/.config/git
 echo '.mise.local.toml' >> ~/.config/git/ignore
 mkdir -p ~/.config/mise
@@ -61,7 +73,7 @@ uv = "latest"
 zoxide = "latest"
 EOF
 mise i
-echo 'eval $(zoxide init bash)' >> ~/.bashrc
+echo 'eval "$(zoxide init bash)"' >> ~/.bashrc
 """
 SSHD_INIT_SCRIPT = """
 chown root:root /var/empty
@@ -90,6 +102,7 @@ rust-analyzer --version
 """
 SETUP_SCRIPTS: dict[str, str] = {
     "rust": RUST_SETUP_SCRIPT,
+    "mise": MISE_INIT_SCRIPT,
 }
 EDITOR = "zed"
 
@@ -128,13 +141,13 @@ def handle_create(name: str, ports: list[str]) -> None:
                 ["smolvm", "machine", "cp", PUB_KEY_PATH, f"{name}:/root/.ssh/authorized_keys"],
                 ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", SSHD_INIT_SCRIPT],
                 ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", GITHUB_INIT_SCRIPT],
-                ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", MISE_INIT_SCRIPT],
+                # ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", MISE_INIT_SCRIPT],
                 ["smolvm", "machine", "exec", "--name", name, "--", "/usr/sbin/sshd"],
                 ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", DOCKER_INIT_SCRIPT],
             ]
         )
     ]
-    print(f"\nUsage:\nsmol clone {name} --repo git@github.com:org/repo.git\nsmol mount --volume /path/to/app:/root/app")
+    print(f"\nUsage:\nsmol clone {name} --repo git@github.com:org/repo.git\nsmol mount --volume /path/to/app:/root/app\nsmol setup {name} {{{'|'.join(SETUP_SCRIPTS)}}}")
 
 
 def handle_edit(name: str, directory: str) -> None:
@@ -154,7 +167,7 @@ def handle_edit(name: str, directory: str) -> None:
         print("Not found running vm")
 
 def handle_exec(name: str, work_dir: str, args: list[str]) -> None:
-    result = run_cmd(["smolvm", "machine", "exec", "--name", name, "-w", work_dir,*args], check=False)
+    result = run_cmd(["smolvm", "machine", "exec", "--name", name, "-w", work_dir, *args], check=False)
     raise SystemExit(result.returncode)
 
 
@@ -300,7 +313,7 @@ def main() -> None:
         case "setup":
             parser = argparse.ArgumentParser()
             parser.add_argument("name", type=str)
-            parser.add_argument("toolchain", type=str, choices=["rust"])
+            parser.add_argument("toolchain", type=str, choices=list(SETUP_SCRIPTS))
             args, _ = parser.parse_known_args(remaining_args)
             handle_setup(name=args.name, toolchain=args.toolchain)
 
