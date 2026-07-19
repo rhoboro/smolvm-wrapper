@@ -147,7 +147,9 @@ def handle_create(name: str, ports: list[str]) -> None:
             ]
         )
     ]
-    print(f"\nUsage:\nsmol clone {name} --repo git@github.com:org/repo.git\nsmol mount --volume /path/to/app:/root/app\nsmol setup {name} {{{'|'.join(SETUP_SCRIPTS)}}}")
+    print(
+        f"\nUsage:\nsmol clone {name} --repo git@github.com:org/repo.git\nsmol mount --volume /path/to/app:/root/app\nsmol setup {name} {{{'|'.join(SETUP_SCRIPTS)}}}"
+    )
 
 
 def handle_edit(name: str, directory: str) -> None:
@@ -165,6 +167,7 @@ def handle_edit(name: str, directory: str) -> None:
                 break
     else:
         print("Not found running vm")
+
 
 def handle_exec(name: str, work_dir: str, args: list[str]) -> None:
     result = run_cmd(["smolvm", "machine", "exec", "--name", name, "-w", work_dir, *args], check=False)
@@ -224,7 +227,29 @@ def validate_port_format(value: str) -> str:
 
 def main() -> None:
     cmd_parser = argparse.ArgumentParser(add_help=False)
-    cmd_parser.add_argument("action", type=str, choices=["clone", "create", "edit", "editor", "exec", "git", "list", "ls", "mount", "remove", "restart", "rm", "setup", "shell", "start", "stop", "zed"])
+    cmd_parser.add_argument(
+        "action",
+        type=str,
+        choices=[
+            "clone",
+            "create",
+            "edit",
+            "editor",
+            "exec",
+            "git",
+            "list",
+            "ls",
+            "mount",
+            "remove",
+            "restart",
+            "rm",
+            "setup",
+            "shell",
+            "start",
+            "stop",
+            "zed",
+        ],
+    )
 
     cmd, remaining_args = cmd_parser.parse_known_args()
 
