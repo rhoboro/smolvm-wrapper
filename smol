@@ -79,7 +79,7 @@ echo 'eval "$(zoxide init bash)"' >> ~/.bashrc
 SSHD_INIT_SCRIPT = """
 chown root:root /var/empty
 ssh-keygen -A
-echo 'SetEnv ENV=/root/.profile' >> /etc/ssh/sshd_config
+sed -i 's#/root:/bin/ash#/root:/bin/bash#' /etc/passwd
 echo 'StrictModes no' >> /etc/ssh/sshd_config
 """
 DOCKER_INIT_SCRIPT = """
