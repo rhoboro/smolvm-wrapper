@@ -47,6 +47,7 @@ mkdir -p ~/.config/git
 MISE_INIT_SCRIPT = """
 curl https://mise.jdx.dev/mise-latest-linux-arm64-musl > /usr/local/bin/mise
 chmod +x /usr/local/bin/mise
+echo 'export PATH="$HOME/.local/share/mise/shims:$PATH"' >> /root/.profile
 echo 'export PATH="$HOME/.local/share/mise/shims:$PATH"' >> /root/.bashrc
 mkdir -p ~/.config/git
 echo '.mise.local.toml' >> ~/.config/git/ignore
