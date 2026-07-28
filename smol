@@ -59,19 +59,12 @@ cat << EOF > ~/.config/mise/config.toml
 show_tools = true
 
 [tools]
-bat = "latest"
 claude = "latest"
-fd = "latest"
-fzf = "latest"
-glow = "latest"
 hunk = "latest"
-jq = "latest"
 just = "latest"
 taplo = "latest"
 ty = "latest"
-usage = "latest"
 uv = "latest"
-zoxide = "latest"
 EOF
 mise i
 echo 'eval "$(zoxide init bash)"' >> ~/.bashrc
