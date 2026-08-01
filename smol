@@ -142,7 +142,7 @@ def handle_create(name: str, ports: list[str]) -> None:
         )
     ]
     print(
-        f"\nUsage:\nsmol clone {name} --repo git@github.com:org/repo.git\nsmol mount --volume /path/to/app:/root/app\nsmol setup {name} {{{'|'.join(SETUP_SCRIPTS)}}}"
+        f"\nUsage:\nsmol clone {name} --repo git@github.com:org/repo.git\nsmol mount {name} --volume /path/to/app:/root/app\nsmol setup {name} {{{'|'.join(SETUP_SCRIPTS)}}}"
     )
 
 
@@ -189,7 +189,9 @@ def handle_restart(name: str) -> None:
         for res in run_cmds(
             [
                 ["smolvm", "machine", "start", "--name", name],
+                ["smolvm", "machine", "exec", "--name", name, "--", "sleep", "1"],
                 ["smolvm", "machine", "exec", "--name", name, "--", "/usr/sbin/sshd"],
+                ["smolvm", "machine", "exec", "--name", name, "--", "sleep", "1"],
                 ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", DOCKER_INIT_SCRIPT],
             ]
         )
@@ -312,7 +314,7 @@ def main() -> None:
         case "mount":
             parser = argparse.ArgumentParser()
             parser.add_argument("name", type=str)
-            parser.add_argument("volume", type=str, required=True)
+            parser.add_argument("-v", "--volume", type=str, required=True)
             args, _ = parser.parse_known_args(remaining_args)
             handle_mount(name=args.name, volume=args.volume)
 
