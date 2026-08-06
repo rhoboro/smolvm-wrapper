@@ -60,7 +60,6 @@ show_tools = true
 
 [tools]
 claude = "latest"
-hunk = "latest"
 just = "latest"
 taplo = "latest"
 ty = "latest"
