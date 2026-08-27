@@ -15,6 +15,7 @@ APK_PACKAGES = [
     "docker-compose",
     "docker",
     "git",
+    "less",
     "openssh",
     "tzdata",
     "vim",
