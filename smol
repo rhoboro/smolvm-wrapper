@@ -16,6 +16,8 @@ APK_PACKAGES = [
     "docker",
     "git",
     "less",
+    "neovim",
+    "nodejs",
     "openssh",
     "tzdata",
     "vim",
