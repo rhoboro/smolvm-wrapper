@@ -25,6 +25,7 @@ if os.getenv("SMOL_GIT_USER_NAME") and os.getenv("SMOL_GIT_USER_EMAIL"):
     GITHUB_INIT_SCRIPT = f"""
 git config --global user.name  {os.getenv("SMOL_GIT_USER_NAME")}
 git config --global user.email {os.getenv("SMOL_GIT_USER_EMAIL")}
+git config --global url."ssh://git@github.com/".insteadOf "https://github.com/"
 ssh-keyscan -t rsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
 mkdir -p ~/.config/git
 curl https://raw.githubusercontent.com/git/git/refs/heads/master/contrib/completion/git-completion.bash -o ~/.git-completion.bash
@@ -33,7 +34,18 @@ echo '. ~/.git-completion.bash' >> ~/.bashrc
 echo '. ~/.git-prompt.sh' >> ~/.bashrc
 echo 'export GIT_PS1_SHOWDIRTYSTATE=1' >> ~/.bashrc
 echo 'export PS1='"'"'\\w$(__git_ps1 " (%s)")\\$ '"'" >> ~/.bashrc
-cat << EOF > ~/.bash_profile
+echo 'alias cl="clear"' >> ~/.bashrc
+echo 'alias a="cd ../"' >> ~/.bashrc
+echo 'alias aa="cd ../../"' >> ~/.bashrc
+echo 'alias aaa="cd ../../../"' >> ~/.bashrc
+echo 'alias aaaa="cd ../../../../"' >> ~/.bashrc
+cat << EOF >> ~/.bashrc
+if [ -z "$SSH_AUTH_SOCK" ]; then
+  export SSH_AUTH_SOCK=/tmp/ssh-agent.sock
+fi
+EOF
+
+cat << EOF >> ~/.bash_profile
 if [ -f ~/.bashrc ]; then
   . ~/.bashrc
 fi
@@ -61,6 +73,7 @@ show_tools = true
 
 [tools]
 claude = "latest"
+codex = "latest"
 just = "latest"
 taplo = "latest"
 ty = "latest"
