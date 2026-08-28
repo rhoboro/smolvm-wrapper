@@ -75,6 +75,7 @@ show_tools = true
 claude = "latest"
 codex = "latest"
 just = "latest"
+glow = "latest"
 taplo = "latest"
 ty = "latest"
 uv = "latest"
