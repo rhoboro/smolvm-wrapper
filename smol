@@ -19,6 +19,7 @@ APK_PACKAGES = [
     "neovim",
     "nodejs",
     "openssh",
+    "ripgrep",
     "tzdata",
     "vim",
 ]
@@ -36,12 +37,13 @@ echo '. ~/.git-completion.bash' >> ~/.bashrc
 echo '. ~/.git-prompt.sh' >> ~/.bashrc
 echo 'export GIT_PS1_SHOWDIRTYSTATE=1' >> ~/.bashrc
 echo 'export PS1='"'"'\\w$(__git_ps1 " (%s)")\\$ '"'" >> ~/.bashrc
+echo 'alias v="nvim"' >> ~/.bashrc
 echo 'alias cl="clear"' >> ~/.bashrc
 echo 'alias a="cd ../"' >> ~/.bashrc
 echo 'alias aa="cd ../../"' >> ~/.bashrc
 echo 'alias aaa="cd ../../../"' >> ~/.bashrc
 echo 'alias aaaa="cd ../../../../"' >> ~/.bashrc
-cat << EOF >> ~/.bashrc
+cat << 'EOF' >> ~/.bashrc
 if [ -z "$SSH_AUTH_SOCK" ]; then
   export SSH_AUTH_SOCK=/tmp/ssh-agent.sock
 fi
