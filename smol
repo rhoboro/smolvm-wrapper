@@ -164,7 +164,7 @@ def handle_create(name: str, ports: list[str]) -> None:
 
 
 def handle_edit(name: str, directory: str) -> None:
-    result = run_cmd(["smolvm", "machine", "ls", "--json"], capture_output=True)
+    result = run_cmd(["smolvm", "machine", "ls", "-v"], capture_output=True)
     is_target = False
     for line in result.stdout.splitlines()[2:]:
         if line.startswith(name + " ") and "running" in line:
