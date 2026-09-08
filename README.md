@@ -20,6 +20,15 @@ export SMOL_GIT_USER_NAME=<your name>
 export SMOL_GIT_USER_EMAIL=<your email address>
 ```
 
+## My workflow
+
+```bash
+smol create myvm -p 8080:8080 -p 2222:22
+smol clone rhoboro/events
+smol setup mise  # install my favorite tools such as uv
+smol zed myvm  # open /root/app in zed editor via ssh
+```
+
 ## How to use
 
 ```bash
@@ -49,7 +58,7 @@ smol shell myvm
 ^D
 
 # Edit files via SSH
-zed ssh://myvm.smolvm:2222/root/app
+smol zed myvm
 
 # Cleanup
 smol rm myvm -f
