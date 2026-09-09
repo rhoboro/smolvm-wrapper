@@ -17,7 +17,6 @@ APK_PACKAGES = [
     "git",
     "less",
     "neovim",
-    "nodejs",
     "openssh",
     "ripgrep",
     "tzdata",
@@ -111,8 +110,19 @@ rustc --version
 cargo --version
 rust-analyzer --version
 """
+
+# install latest version for aarch64 musl
+NODEJS_SETUP_SCRIPT = r"""
+VERSION=$(curl -s https://unofficial-builds.nodejs.org/download/release/ | grep -o 'v[0-9]*\.[0-9]*\.[0-9]*' | sort -Vu | tail -1)
+curl -fsSL https://unofficial-builds.nodejs.org/download/release/${VERSION}/node-${VERSION}-linux-arm64-musl.tar.xz | tar -xJ -C /usr/local --strip-components=1
+hash -r
+echo "node: $(node -v)"
+echo "npm: $(npm -v)"
+"""
+
 SETUP_SCRIPTS: dict[str, str] = {
     "rust": RUST_SETUP_SCRIPT,
+    "node": NODEJS_SETUP_SCRIPT,
     "mise": MISE_INIT_SCRIPT,
 }
 EDITOR = "zed"
