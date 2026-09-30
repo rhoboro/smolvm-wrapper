@@ -1,13 +1,13 @@
 # smolvm-wrapper
 
-A tiny personal wrapper script for [smolvm](https://github.com/smol-machines/smolvm)
+A small personal wrapper around [smolvm](https://github.com/smol-machines/smolvm).
 
 ## Setup
 
 ```bash
 ln -sf ${PWD}/smol ${HOME}/.local/bin/smol
 
-# Add to ~/.ssh/config
+# Add the following to ~/.ssh/config
 Host *.smolvm
     User root
     HostName 127.0.0.1
@@ -29,7 +29,7 @@ smol setup mise  # install my favorite tools such as uv
 smol zed myvm  # open /root/app in zed editor via ssh
 ```
 
-## How to use
+## Usage
 
 ```bash
 $ smol
@@ -43,7 +43,7 @@ smol create myvm -p 8080:8080 -p 2222:22
 # git clone (repository is positional; --dest is optional)
 smol clone myvm git@github.com:org/repo.git --dest /root/app
 
-# Or mount a local dir
+# Or mount a local directory
 smol stop myvm
 smol mount myvm --volume /path/to/app:/root/app
 smol restart myvm

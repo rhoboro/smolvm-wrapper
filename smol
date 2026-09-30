@@ -121,7 +121,7 @@ cargo --version
 rust-analyzer --version
 """
 
-# install latest version for aarch64 musl
+# Install the latest version for aarch64-musl.
 NODEJS_SETUP_SCRIPT = r"""
 VERSION=$(curl -s https://unofficial-builds.nodejs.org/download/release/ | grep -o 'v[0-9]*\.[0-9]*\.[0-9]*' | sort -Vu | tail -1)
 curl -fsSL https://unofficial-builds.nodejs.org/download/release/${VERSION}/node-${VERSION}-linux-arm64-musl.tar.xz | tar -xJ -C /usr/local --strip-components=1
@@ -168,7 +168,7 @@ def handle_create(name: str, ports: list[str]) -> None:
                 create,
                 ["smolvm", "machine", "start", "--name", name],
                 ["smolvm", "machine", "exec", "-it", "--name", name, "--", "sh", "-c", f"apk update && apk add -q {pkgs}"],
-                # always use IPv4
+                # Always use IPv4.
                 ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", "echo '-4' >> ~/.curlrc"],
                 ["smolvm", "machine", "cp", PUB_KEY_PATH, f"{name}:/root/.ssh/authorized_keys"],
                 ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", SSHD_SETUP_SCRIPT],
@@ -250,7 +250,7 @@ def handle_setup(name: str, toolchain: str) -> None:
 
 
 def handle_shell(name: str) -> None:
-    # Launch /bin/sh as login shell for reading /root/.profile
+    # Start Bash as a login shell so it reads /root/.profile.
     result = run_cmd(["smolvm", "machine", "exec", "--name", name, "-it", "-w", "/root", "--", "/bin/bash", "-l"], check=False)
     raise SystemExit(result.returncode)
 
