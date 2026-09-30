@@ -24,7 +24,7 @@ export SMOL_GIT_USER_EMAIL=<your email address>
 
 ```bash
 smol create myvm -p 8080:8080 -p 2222:22
-smol clone rhoboro/events
+smol clone myvm rhoboro/events
 smol setup mise  # install my favorite tools such as uv
 smol zed myvm  # open /root/app in zed editor via ssh
 ```
@@ -33,23 +33,29 @@ smol zed myvm  # open /root/app in zed editor via ssh
 
 ```bash
 $ smol
-usage: smol {clone,create,mount,remove,restart,rm,setup,shell,stop} name
-smol: error: the following arguments are required: action, name
+usage: smol {clone,create,edit,editor,exec,git,list,ls,mount,remove,restart,rm,setup,shell,start,stop,zed}
+smol: error: the following arguments are required: action
 ```
 
 ```bash
 smol create myvm -p 8080:8080 -p 2222:22
 
-# git clone
-smol clone myvm --repo git@github.com:org/repo.git --dist /root/app
+# git clone (repository is positional; --dest is optional)
+smol clone myvm git@github.com:org/repo.git --dest /root/app
 
 # Or mount a local dir
 smol stop myvm
 smol mount myvm --volume /path/to/app:/root/app
 smol restart myvm
 
-# Docker and Docker Compose are available.
-smolvm machine exec -it --name myvm -w /root/app -- docker compose up
+# Install Docker and start its daemon
+smol setup myvm docker
+
+# Start the daemon again after a VM restart
+smol start myvm --docker
+
+# Run Docker commands
+smol exec myvm -- docker compose up
 
 # Mise is pre-installed.
 smol shell myvm

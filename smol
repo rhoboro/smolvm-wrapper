@@ -12,8 +12,6 @@ from typing import Any
 APK_PACKAGES = [
     "bash",
     "curl",
-    "docker-compose",
-    "docker",
     "git",
     "less",
     "neovim",
@@ -24,7 +22,7 @@ APK_PACKAGES = [
 ]
 PUB_KEY_PATH = Path.home() / ".ssh" / "id_smolvm.pub"
 if os.getenv("SMOL_GIT_USER_NAME") and os.getenv("SMOL_GIT_USER_EMAIL"):
-    GITHUB_INIT_SCRIPT = f"""
+    GITHUB_SETUP_SCRIPT = f"""
 git config --global user.name  {os.getenv("SMOL_GIT_USER_NAME")}
 git config --global user.email {os.getenv("SMOL_GIT_USER_EMAIL")}
 git config --global url."ssh://git@github.com/".insteadOf "https://github.com/"
@@ -56,11 +54,11 @@ EOF
 
     """
 else:
-    GITHUB_INIT_SCRIPT = """
+    GITHUB_SETUP_SCRIPT = """
 ssh-keyscan -t rsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
 mkdir -p ~/.config/git
     """
-MISE_INIT_SCRIPT = """
+MISE_SETUP_SCRIPT = """
 curl https://mise.jdx.dev/mise-latest-linux-arm64-musl > /usr/local/bin/mise
 chmod +x /usr/local/bin/mise
 echo 'export PATH="$HOME/.local/share/mise/shims:$PATH"' >> /root/.profile
@@ -85,19 +83,31 @@ uv = "latest"
 EOF
 mise i
 """
-SSHD_INIT_SCRIPT = """
+
+SSHD_SETUP_SCRIPT = """
 chown root:root /var/empty
 ssh-keygen -A
 sed -i 's#/root:/bin/ash#/root:/bin/bash#' /etc/passwd
 echo 'StrictModes no' >> /etc/ssh/sshd_config
+echo 'PidFile /var/run/sshd.pid' >> /etc/ssh/sshd_config
 """
-DOCKER_INIT_SCRIPT = """
+
+DOCKER_START_SCRIPT = """
+command -v dockerd >/dev/null 2>&1 || {
+  echo "Docker is not installed. Run 'smol setup <vm> docker' first." >&2
+  exit 1
+}
+docker info >/dev/null 2>&1 && exit 0
 mkdir -p /storage/docker /var/lib/docker
 mount --bind /storage/docker /var/lib/docker
 rm -f /var/run/docker.pid
 dockerd --storage-driver=overlay2 >/tmp/dockerd.log 2>&1 &
 for i in $(seq 1 30); do docker info >/dev/null 2>&1 && break; sleep 1; done
 docker info | grep "Storage Driver"
+"""
+DOCKER_SETUP_SCRIPT = f"""
+apk add -q docker docker-compose
+{DOCKER_START_SCRIPT}
 """
 
 RUST_SETUP_SCRIPT = """
@@ -123,7 +133,8 @@ echo "npm: $(npm -v)"
 SETUP_SCRIPTS: dict[str, str] = {
     "rust": RUST_SETUP_SCRIPT,
     "node": NODEJS_SETUP_SCRIPT,
-    "mise": MISE_INIT_SCRIPT,
+    "mise": MISE_SETUP_SCRIPT,
+    "docker": DOCKER_SETUP_SCRIPT,
 }
 EDITOR = "zed"
 
@@ -160,16 +171,14 @@ def handle_create(name: str, ports: list[str]) -> None:
                 # always use IPv4
                 ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", "echo '-4' >> ~/.curlrc"],
                 ["smolvm", "machine", "cp", PUB_KEY_PATH, f"{name}:/root/.ssh/authorized_keys"],
-                ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", SSHD_INIT_SCRIPT],
-                ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", GITHUB_INIT_SCRIPT],
-                # ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", MISE_INIT_SCRIPT],
+                ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", SSHD_SETUP_SCRIPT],
+                ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", GITHUB_SETUP_SCRIPT],
                 ["smolvm", "machine", "exec", "--name", name, "--", "/usr/sbin/sshd"],
-                ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", DOCKER_INIT_SCRIPT],
             ]
         )
     ]
     print(
-        f"\nUsage:\nsmol clone {name} --repo git@github.com:org/repo.git\nsmol mount {name} --volume /path/to/app:/root/app\nsmol setup {name} {{{'|'.join(SETUP_SCRIPTS)}}}"
+        f"\nUsage:\nsmol clone {name} --repo git@github.com:org/repo.git\nsmol mount {name} --volume /path/to/app:/root/app\nsmol setup {name} {{{'|'.join(SETUP_SCRIPTS)}}}\nsmol exec {name} -- docker compose up"
     )
 
 
@@ -191,7 +200,7 @@ def handle_edit(name: str, directory: str) -> None:
 
 
 def handle_exec(name: str, work_dir: str, args: list[str]) -> None:
-    result = run_cmd(["smolvm", "machine", "exec", "--name", name, "-w", work_dir, *args], check=False)
+    result = run_cmd(["smolvm", "machine", "exec", "--name", name, "-w", work_dir, "--", *args], check=False)
     raise SystemExit(result.returncode)
 
 
@@ -210,21 +219,29 @@ def handle_remove(name: str, force: bool) -> None:
         run_cmd(["smolvm", "machine", "delete", "--name", name])
 
 
-def handle_restart(name: str) -> None:
+def handle_restart(name: str, docker: bool = False) -> None:
+    commands = [
+        ["smolvm", "machine", "start", "--name", name],
+        ["smolvm", "machine", "exec", "--name", name, "--", "sleep", "1"],
+        [
+            "smolvm",
+            "machine",
+            "exec",
+            "--name",
+            name,
+            "--",
+            "sh",
+            "-c",
+            'if [ -s /var/run/sshd.pid ] && kill -0 "$(cat /var/run/sshd.pid)" 2>/dev/null; then exit 0; fi; /usr/sbin/sshd',
+        ],
+    ]
+    if docker:
+        commands.append(["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", DOCKER_START_SCRIPT])
     _ = [
-        res
-        for res in run_cmds(
-            [
-                ["smolvm", "machine", "start", "--name", name],
-                ["smolvm", "machine", "exec", "--name", name, "--", "sleep", "1"],
-                ["smolvm", "machine", "exec", "--name", name, "--", "/usr/sbin/sshd"],
-                ["smolvm", "machine", "exec", "--name", name, "--", "sleep", "1"],
-                ["smolvm", "machine", "exec", "--name", name, "--", "sh", "-c", DOCKER_INIT_SCRIPT],
-            ]
-        )
+        res for res in run_cmds(commands)
     ]
 
-    print(f"\nUsage:\nsmolvm machine exec -it --name {name} -w /root/app -- docker compose up")
+    print(f"\nUsage:\nsmol exec {name} -- docker compose up")
 
 
 def handle_setup(name: str, toolchain: str) -> None:
@@ -355,8 +372,9 @@ def main() -> None:
         case "restart" | "start":
             parser = argparse.ArgumentParser()
             parser.add_argument("name", type=str)
+            parser.add_argument("--docker", action="store_true", help="Start Docker daemon after starting the VM")
             args, _ = parser.parse_known_args(remaining_args)
-            handle_restart(name=args.name)
+            handle_restart(name=args.name, docker=args.docker)
 
         case "setup":
             parser = argparse.ArgumentParser()
