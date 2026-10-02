@@ -116,6 +116,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-mod
 /root/.cargo/bin/rustup toolchain install stable --component rust-analyzer
 for bin in /root/.cargo/bin/*; do ln -sf "$bin" /usr/local/bin/; done
 ln -sf $(/root/.cargo/bin/rustup which rust-analyzer) /usr/local/bin/rust-analyzer
+echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /root/.bashrc
 rustc --version
 cargo --version
 rust-analyzer --version
