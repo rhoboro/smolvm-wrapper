@@ -157,8 +157,11 @@ def handle_clone(name: str, repo: str, dest: str) -> None:
     run_cmd(["smolvm", "machine", "exec", "-it", "--name", name, "--", "git", "clone", repo, dest])
 
 
-def handle_create(name: str, ports: list[str]) -> None:
+def handle_create(name: str, ports: list[str], disk: int | None = None, mem: int | None = None, overlay: int | None = None) -> None:
     create = ["smolvm", "machine", "create", "--name", name, "--ssh-agent", "--net"]
+    for option, value in (("--storage", disk), ("--mem", mem), ("--overlay", overlay)):
+        if value is not None:
+            create.extend([option, str(value)])
     pkgs = " ".join(APK_PACKAGES)
     for port in ports:
         create.extend(["--port", port])
@@ -306,7 +309,6 @@ def main() -> None:
         case "create":
             parser = argparse.ArgumentParser(conflict_handler="resolve")
             parser.add_argument("name", type=str)
-            parser.add_argument("-p", "--port", type=int, required=True)
             parser.add_argument(
                 "-p",
                 "--port",
@@ -318,8 +320,11 @@ def main() -> None:
             )
             parser.add_argument("--clone", type=str, required=False)
             parser.add_argument("--mount", type=str, required=False)
+            parser.add_argument("--disk", type=int, help="Storage disk size in GiB (smolvm default if omitted)")
+            parser.add_argument("--mem", type=int, help="Memory size in MiB (smolvm default if omitted)")
+            parser.add_argument("--overlay", type=int, help="Overlay disk size in GiB (smolvm default if omitted)")
             args, _ = parser.parse_known_args(remaining_args)
-            handle_create(name=args.name, ports=args.port)
+            handle_create(name=args.name, ports=args.port, disk=args.disk, mem=args.mem, overlay=args.overlay)
             if args.clone:
                 handle_clone(name=args.name, repo=args.clone, dest="/root/app")
             elif args.mount:

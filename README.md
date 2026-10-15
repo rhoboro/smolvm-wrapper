@@ -38,7 +38,11 @@ smol: error: the following arguments are required: action
 ```
 
 ```bash
-smol create myvm -p 8080:8080 -p 2222:22
+smol create myvm -p 8080:8080 -p 2222:22 [--disk SIZE] [--mem SIZE] [--overlay SIZE]
+```
+
+`--disk` (GiB), `--mem` (MiB), and `--overlay` (GiB) are optional. When omitted,
+smolvm's own defaults are used.
 
 # git clone (repository is positional; --dest is optional)
 smol clone myvm git@github.com:org/repo.git --dest /root/app
