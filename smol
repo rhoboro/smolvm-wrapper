@@ -182,7 +182,7 @@ def handle_create(name: str, ports: list[str], disk: int | None = None, mem: int
         )
     ]
     print(
-        f"\nUsage:\nsmol clone {name} --repo git@github.com:org/repo.git\nsmol mount {name} --volume /path/to/app:/root/app\nsmol setup {name} {{{'|'.join(SETUP_SCRIPTS)}}}\nsmol exec {name} -- docker compose up"
+        f"\nUsage:\nsmol clone {name} --repo git@github.com:org/repo.git\nsmol mount {name} --volume /path/to/app:/workspace/app\nsmol setup {name} {{{'|'.join(SETUP_SCRIPTS)}}}\nsmol exec {name} -- docker compose up"
     )
 
 
@@ -302,7 +302,7 @@ def main() -> None:
             parser = argparse.ArgumentParser()
             parser.add_argument("name", type=str)
             parser.add_argument("repo", type=str)
-            parser.add_argument("-d", "--dest", type=str, default="/root/app")
+            parser.add_argument("-d", "--dest", type=str, default="/workspace/app")
             args, _ = parser.parse_known_args(remaining_args)
             handle_clone(name=args.name, repo=args.repo, dest=args.dest)
 
@@ -326,9 +326,9 @@ def main() -> None:
             args, _ = parser.parse_known_args(remaining_args)
             handle_create(name=args.name, ports=args.port, disk=args.disk, mem=args.mem, overlay=args.overlay)
             if args.clone:
-                handle_clone(name=args.name, repo=args.clone, dest="/root/app")
+                handle_clone(name=args.name, repo=args.clone, dest="/workspace/app")
             elif args.mount:
-                m = f"{Path(args.mount).absolute()}:/root/app"
+                m = f"{Path(args.mount).absolute()}:/workspace/app"
                 handle_stop(name=args.name)
                 handle_mount(name=args.name, volume=m)
                 handle_restart(name=args.name)
@@ -336,14 +336,14 @@ def main() -> None:
         case "edit" | "editor" | "zed":
             parser = argparse.ArgumentParser()
             parser.add_argument("name", type=str)
-            parser.add_argument("-d", "--dir", type=str, default="/root/app")
+            parser.add_argument("-d", "--dir", type=str, default="/workspace/app")
             args, _ = parser.parse_known_args(remaining_args)
             handle_edit(name=args.name, directory=args.dir)
 
         case "exec":
             parser = argparse.ArgumentParser()
             parser.add_argument("name", type=str)
-            parser.add_argument("-w", "--work-dir", type=str, default="/root/app")
+            parser.add_argument("-w", "--work-dir", type=str, default="/workspace/app")
             args, remaining = parser.parse_known_args(remaining_args)
             exec_args = remaining
             if exec_args[:1] == ["--"]:
@@ -353,7 +353,7 @@ def main() -> None:
         case "git":
             parser = argparse.ArgumentParser()
             parser.add_argument("name", type=str)
-            parser.add_argument("-w", "--work-dir", type=str, default="/root/app")
+            parser.add_argument("-w", "--work-dir", type=str, default="/workspace/app")
             args, remaining = parser.parse_known_args(remaining_args)
             exec_args = ["git"] + remaining
             handle_exec(name=args.name, work_dir=args.work_dir, args=exec_args)
