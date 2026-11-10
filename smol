@@ -19,6 +19,9 @@ APK_PACKAGES = [
     "ripgrep",
     "tzdata",
     "vim",
+    # https://github.com/agentclientprotocol/claude-agent-acp/blob/a1d83c60310f33cbc3cd78f6b6133278e754efd5/README.md?plain=1#L46
+    "libgcc",
+    "libstdc++",
 ]
 PUB_KEY_PATH = Path.home() / ".ssh" / "id_smolvm.pub"
 if os.getenv("SMOL_GIT_USER_NAME") and os.getenv("SMOL_GIT_USER_EMAIL"):
