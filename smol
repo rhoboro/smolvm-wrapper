@@ -128,7 +128,7 @@ rust-analyzer --version
 # Install the latest version for aarch64-musl.
 NODEJS_SETUP_SCRIPT = r"""
 VERSION=v26.13.1
-curl -fsSL https://unofficial-builds.nodejs.org/download/release/${VERSION}/node-${VERSION}-linux-arm64-musl.tar.gz | tar -xz -C /usr/local --strip-components=1
+curl -fL https://unofficial-builds.nodejs.org/download/release/${VERSION}/node-${VERSION}-linux-arm64-musl.tar.gz | tar -xz -C /usr/local --strip-components=1
 hash -r
 echo "node: $(node -v)"
 echo "npm: $(npm -v)"
