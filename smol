@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 APK_PACKAGES = [
+    "aws-cli",
     "bash",
     "curl",
     "git",
@@ -104,7 +105,7 @@ docker info >/dev/null 2>&1 && exit 0
 mkdir -p /storage/docker /var/lib/docker
 mount --bind /storage/docker /var/lib/docker
 rm -f /var/run/docker.pid
-dockerd --storage-driver=overlay2 >/tmp/dockerd.log 2>&1 &
+dockerd >/tmp/dockerd.log 2>&1 &
 for i in $(seq 1 30); do docker info >/dev/null 2>&1 && break; sleep 1; done
 docker info | grep "Storage Driver"
 """
